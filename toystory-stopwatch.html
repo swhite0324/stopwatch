@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>앤디의 방 스탑워치</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: linear-gradient(#4a9be8 73.7%, #a8723f 73.7%);
+    overflow: hidden;
+  }
+  #scene { display: block; width: 100vw; height: 100vh; user-select: none; -webkit-user-select: none; }
+  text { font-family: "Segoe UI", "Malgun Gothic", sans-serif; }
+  .mono { font-family: Consolas, "Courier New", monospace; }
+  .crayon { font-family: "Segoe Print", "Comic Sans MS", "Malgun Gothic", cursive; }
+
+  .btn { cursor: pointer; outline: none; }
+  .btn .cap { transition: transform .08s, filter .15s; }
+  .btn:hover .cap { filter: brightness(1.15); }
+  .btn:active .cap { transform: translateY(4px); filter: brightness(.85); }
+  .btn:focus-visible .ring-focus { stroke: #fff; stroke-width: 3; }
+  .ring-focus { fill: none; stroke: none; }
+
+  .knob-spin { transform-box: fill-box; transform-origin: center; }
+  #scene.running .knob-spin { animation: spin 1.4s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #ringGroup { transition: transform .15s; }
+  #bubble { opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #bubble.show { opacity: 1; }
+  #screenGlow { animation: none; }
+</style>
+</head>
+<body>
+<svg id="scene" viewBox="0 0 1200 760" preserveAspectRatio="xMidYMid meet" role="img" aria-label="앤디의 방 스탑워치">
+<defs>
+  <!-- 그림자 -->
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+    <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#000" flood-opacity=".3"/>
+  </filter>
+  <filter id="softShadow" x="-20%" y="-20%" width="140%" height="160%">
+    <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity=".35"/>
+  </filter>
+
+  <!-- 벽지: 앤디 방의 하늘색 구름 -->
+  <pattern id="wallPat" width="220" height="170" patternUnits="userSpaceOnUse">
+    <rect width="220" height="170" fill="#4a9be8"/>
+    <g fill="#fff" opacity=".92">
+      <circle cx="52" cy="52" r="17"/><circle cx="72" cy="43" r="22"/><circle cx="96" cy="52" r="17"/>
+      <rect x="40" y="52" width="68" height="17" rx="8"/>
+    </g>
+    <g fill="#fff" opacity=".92" transform="translate(110 85) scale(.85)">
+      <circle cx="52" cy="52" r="17"/><circle cx="72" cy="43" r="22"/><circle cx="96" cy="52" r="17"/>
+      <rect x="40" y="52" width="68" height="17" rx="8"/>
+    </g>
+  </pattern>
+  <linearGradient id="wallShade" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#fff" stop-opacity=".12"/><stop offset="1" stop-color="#000" stop-opacity=".12"/>
+  </linearGradient>
+  <!-- 마룻바닥 -->
+  <pattern id="floorPat" width="240" height="120" patternUnits="userSpaceOnUse">
+    <rect width="240" height="120" fill="#c68a50"/>
+    <path d="M0 0H240M0 60H240M0 120H240M70 0V60M190 60V120" stroke="#9d6733" stroke-width="3" fill="none"/>
+    <path d="M10 30H60M130 20H200M20 90H110M150 95H220" stroke="#d9a468" stroke-width="2" opacity=".6"/>
+  </pattern>
+  <linearGradient id="floorShade" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#000" stop-opacity=".25"/><stop offset=".4" stop-color="#000" stop-opacity="0"/>
+  </linearGradient>
+
+  <!-- 공통 질감 -->
+  <radialGradient id="gSkin" cx=".4" cy=".32" r=".8"><stop offset="0" stop-color="#ffe6c8"/><stop offset="1" stop-color="#e99f6c"/></radialGradient>
+  <linearGradient id="gYellow" x1="0" x2="1"><stop offset="0" stop-color="#ffd84d"/><stop offset=".55" stop-color="#f3b51a"/><stop offset="1" stop-color="#c58509"/></linearGradient>
+  <linearGradient id="gJeans" x1="0" x2="1"><stop offset="0" stop-color="#4a79cc"/><stop offset="1" stop-color="#2a4c93"/></linearGradient>
+  <linearGradient id="gBrown" x1="0" x2="1"><stop offset="0" stop-color="#9a6531"/><stop offset="1" stop-color="#523212"/></linearGradient>
+  <linearGradient id="gHat" x1="0" x2="1"><stop offset="0" stop-color="#a06a35"/><stop offset=".5" stop-color="#7d4c21"/><stop offset="1" stop-color="#4f2f13"/></linearGradient>
+  <radialGradient id="gWhite" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#c9d1e2"/></radialGradient>
+  <radialGradient id="gVest" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#fffdf5"/><stop offset="1" stop-color="#d9d2bd"/></radialGradient>
+  <linearGradient id="gGreen" x1="0" x2="1"><stop offset="0" stop-color="#8be25e"/><stop offset="1" stop-color="#3c9a27"/></linearGradient>
+  <linearGradient id="gPurple" x1="0" x2="1"><stop offset="0" stop-color="#a679e0"/><stop offset="1" stop-color="#58309a"/></linearGradient>
+  <radialGradient id="gRex" cx=".4" cy=".3" r=".85"><stop offset="0" stop-color="#86e35f"/><stop offset="1" stop-color="#379528"/></radialGradient>
+  <radialGradient id="gRexLight" cx=".4" cy=".3" r=".85"><stop offset="0" stop-color="#e1fab5"/><stop offset="1" stop-color="#9fdb6c"/></radialGradient>
+  <radialGradient id="gPink" cx=".38" cy=".28" r=".85"><stop offset="0" stop-color="#ffcddc"/><stop offset="1" stop-color="#e5779a"/></radialGradient>
+  <radialGradient id="gPinkSnout" cx=".4" cy=".3" r=".85"><stop offset="0" stop-color="#ffb1c8"/><stop offset="1" stop-color="#ef7ea1"/></radialGradient>
+  <linearGradient id="gWood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d99d62"/><stop offset="1" stop-color="#8a5629"/></linearGradient>
+  <linearGradient id="gFrame" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff5547"/><stop offset=".5" stop-color="#d9261b"/><stop offset="1" stop-color="#a5130c"/></linearGradient>
+  <linearGradient id="gScreen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d0d3d6"/><stop offset="1" stop-color="#a3a7ad"/></linearGradient>
+  <radialGradient id="gKnob" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#b9bcc4"/></radialGradient>
+  <radialGradient id="gBtnG" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#9bff9f"/><stop offset="1" stop-color="#15911f"/></radialGradient>
+  <radialGradient id="gBtnR" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#ff9a92"/><stop offset="1" stop-color="#bf1a14"/></radialGradient>
+  <radialGradient id="gBtnB" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#9ac7ff"/><stop offset="1" stop-color="#1c5fc4"/></radialGradient>
+  <radialGradient id="gBall" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#fff29a"/><stop offset="1" stop-color="#e8b300"/></radialGradient>
+  <radialGradient id="gHelmet" cx=".35" cy=".25" r=".9"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".5" stop-color="#cfe9ff" stop-opacity=".18"/><stop offset="1" stop-color="#9ccaff" stop-opacity=".12"/></radialGradient>
+</defs>
+
+<!-- ================= 앤디의 방 ================= -->
+<rect width="1200" height="560" fill="url(#wallPat)"/>
+<rect width="1200" height="560" fill="url(#wallShade)"/>
+<rect y="548" width="1200" height="18" fill="#f4ecd8"/>
+<rect y="562" width="1200" height="6" fill="#000" opacity=".15"/>
+<rect y="560" width="1200" height="200" fill="url(#floorPat)"/>
+<rect y="560" width="1200" height="200" fill="url(#floorShade)"/>
+
+<!-- 러그 -->
+<ellipse cx="600" cy="722" rx="330" ry="36" fill="#b8322a"/>
+<ellipse cx="600" cy="722" rx="300" ry="28" fill="none" stroke="#f3dfb0" stroke-width="4" stroke-dasharray="14 10"/>
+
+<!-- 선반 + 에치 어 스케치 스톱워치 -->
+<g filter="url(#shadow)">
+  <path d="M340 364 L340 410 L400 364 Z M800 364 L800 410 L860 364 Z" fill="#7d4c21"/>
+  <rect x="300" y="342" width="600" height="24" rx="8" fill="url(#gWood)"/>
+  <rect x="300" y="342" width="600" height="6" rx="3" fill="#fff" opacity=".25"/>
+</g>
+
+<g id="display" filter="url(#shadow)">
+  <rect x="340" y="40" width="520" height="302" rx="40" fill="url(#gFrame)"/>
+  <rect x="346" y="46" width="508" height="290" rx="35" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="3"/>
+  <rect x="378" y="74" width="444" height="196" rx="16" fill="#6e1008" opacity=".55"/>
+  <rect x="382" y="78" width="436" height="188" rx="12" fill="url(#gScreen)"/>
+  <rect x="382" y="78" width="436" height="188" rx="12" fill="none" stroke="#000" stroke-opacity=".25" stroke-width="3"/>
+  <ellipse cx="520" cy="96" rx="110" ry="10" fill="#fff" opacity=".35"/>
+  <text id="status" x="400" y="108" font-size="17" font-weight="700" fill="#3a3d44" opacity=".75" letter-spacing="3">READY</text>
+  <text id="disp" class="mono" x="600" y="212" font-size="96" font-weight="700" text-anchor="middle" fill="#25272c">00:00.00</text>
+  <text x="600" y="312" font-size="23" font-weight="800" text-anchor="middle" fill="#ffe27a" letter-spacing="2">ANDY'S TOY TIMER</text>
+  <!-- 노브 -->
+  <g>
+    <circle cx="408" cy="304" r="27" fill="#6e1008" opacity=".5"/>
+    <g class="knob-spin"><circle cx="408" cy="302" r="24" fill="url(#gKnob)"/><rect x="405" y="282" width="6" height="14" rx="3" fill="#888"/></g>
+    <circle cx="792" cy="304" r="27" fill="#6e1008" opacity=".5"/>
+    <g class="knob-spin"><circle cx="792" cy="302" r="24" fill="url(#gKnob)"/><rect x="789" y="282" width="6" height="14" rx="3" fill="#888"/></g>
+  </g>
+</g>
+
+<!-- 바닥 장난감: ABC 블록, 공 -->
+<ellipse cx="575" cy="704" rx="105" ry="12" fill="#000" opacity=".25"/>
+<g id="blocks" filter="url(#softShadow)"></g>
+<ellipse cx="684" cy="702" rx="40" ry="9" fill="#000" opacity=".25"/>
+<g filter="url(#softShadow)">
+  <circle cx="684" cy="664" r="38" fill="url(#gBall)"/>
+  <path d="M650 650 Q684 626 718 650 Q722 662 718 668 Q684 640 650 668 Q646 660 650 650Z" fill="#2a6fd6"/>
+  <polygon points="684,652 688,664 701,664 691,672 695,684 684,676 673,684 677,672 667,664 680,664" fill="#e0281f"/>
+  <ellipse cx="668" cy="640" rx="12" ry="7" fill="#fff" opacity=".6" transform="rotate(-30 668 640)"/>
+</g>
+
+<!-- ================= 렉스 ================= -->
+<g id="rex" transform="translate(410 700)" filter="url(#shadow)">
+  <ellipse cx="0" cy="4" rx="95" ry="12" fill="#000" opacity=".25"/>
+  <path d="M-52 -120 C-140 -112 -156 -34 -108 -20 C-96 -17 -90 -30 -93 -42 C-86 -62 -74 -80 -44 -86Z" fill="url(#gRex)"/>
+  <ellipse cx="-32" cy="-14" rx="34" ry="17" fill="url(#gRex)"/>
+  <ellipse cx="32" cy="-14" rx="34" ry="17" fill="url(#gRex)"/>
+  <ellipse cx="0" cy="-105" rx="70" ry="92" fill="url(#gRex)"/>
+  <ellipse cx="0" cy="-88" rx="42" ry="68" fill="url(#gRexLight)"/>
+  <g fill="#2d7a22" opacity=".8">
+    <ellipse cx="-38" cy="-150" rx="14" ry="10"/><ellipse cx="40" cy="-142" rx="12" ry="9"/>
+    <ellipse cx="-48" cy="-100" rx="10" ry="8"/><ellipse cx="50" cy="-92" rx="12" ry="9"/>
+  </g>
+  <!-- 팔 -->
+  <ellipse cx="-66" cy="-122" rx="13" ry="20" fill="url(#gRex)" transform="rotate(25 -66 -122)"/>
+  <ellipse cx="66" cy="-122" rx="13" ry="20" fill="url(#gRex)" transform="rotate(-25 66 -122)"/>
+  <!-- 머리 -->
+  <ellipse cx="0" cy="-228" rx="66" ry="56" fill="url(#gRex)"/>
+  <g fill="#2d7a22" opacity=".8"><ellipse cx="-28" cy="-270" rx="11" ry="7"/><ellipse cx="22" cy="-274" rx="13" ry="8"/><ellipse cx="46" cy="-250" rx="8" ry="6"/></g>
+  <ellipse cx="0" cy="-205" rx="52" ry="32" fill="url(#gRexLight)"/>
+  <ellipse cx="-15" cy="-216" rx="4" ry="5" fill="#2d6a22"/><ellipse cx="15" cy="-216" rx="4" ry="5" fill="#2d6a22"/>
+  <path d="M-38 -194 Q0 -168 38 -194" fill="#7a1e1e" stroke="#3a1010" stroke-width="3"/>
+  <path d="M-26 -190 l5 8 l5 -6 M-6 -183 l5 8 l5 -8 M14 -184 l5 7 l5 -8" fill="#fff" stroke="#fff" stroke-width="2"/>
+  <!-- 눈 (걱정스러운 표정) -->
+  <circle cx="-27" cy="-250" r="18" fill="#fff"/><circle cx="27" cy="-250" r="18" fill="#fff"/>
+  <circle cx="-23" cy="-248" r="8" fill="#1b1b1b"/><circle cx="31" cy="-248" r="8" fill="#1b1b1b"/>
+  <circle cx="-25" cy="-251" r="2.6" fill="#fff"/><circle cx="29" cy="-251" r="2.6" fill="#fff"/>
+  <path d="M-46 -268 L-12 -282 M46 -268 L12 -282" stroke="#1f6317" stroke-width="5" stroke-linecap="round"/>
+</g>
+
+<!-- ================= 햄 ================= -->
+<g id="hamm" transform="translate(810 700)" filter="url(#shadow)">
+  <ellipse cx="0" cy="4" rx="100" ry="12" fill="#000" opacity=".25"/>
+  <ellipse cx="-50" cy="-14" rx="22" ry="15" fill="#e0688d"/><ellipse cx="50" cy="-14" rx="22" ry="15" fill="#e0688d"/>
+  <path d="M82 -70 q30 -8 22 -34 q-10 -16 -26 -4" stroke="#e5779a" stroke-width="9" fill="none" stroke-linecap="round"/>
+  <ellipse cx="0" cy="-72" rx="88" ry="64" fill="url(#gPink)"/>
+  <path d="M-62 -118 L-74 -158 L-34 -134Z M62 -118 L74 -158 L34 -134Z" fill="#f08aab" stroke="#e5779a" stroke-width="6" stroke-linejoin="round"/>
+  <rect x="-24" y="-136" width="48" height="9" rx="4.5" fill="#6a2540"/>
+  <ellipse cx="-30" cy="-136" rx="30" ry="7" fill="#fff" opacity=".35"/>
+  <ellipse cx="0" cy="-62" rx="42" ry="30" fill="url(#gPinkSnout)"/>
+  <ellipse cx="-14" cy="-62" rx="6" ry="9" fill="#a8365f"/><ellipse cx="14" cy="-62" rx="6" ry="9" fill="#a8365f"/>
+  <path d="M-30 -38 Q0 -22 30 -38" fill="none" stroke="#7a2848" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="-34" cy="-98" r="13" fill="#fff"/><circle cx="34" cy="-98" r="13" fill="#fff"/>
+  <circle cx="-31" cy="-96" r="6" fill="#1b1b1b"/><circle cx="37" cy="-96" r="6" fill="#1b1b1b"/>
+  <path d="M-48 -112 Q-34 -118 -20 -108 M20 -108 Q34 -118 48 -112" stroke="#9a3558" stroke-width="5" fill="none" stroke-linecap="round"/>
+</g>
+
+<!-- ================= 우디 ================= -->
+<g id="woody" transform="translate(170 700) scale(.9)" filter="url(#shadow)">
+  <ellipse cx="0" cy="4" rx="115" ry="14" fill="#000" opacity=".25"/>
+  <rect x="-68" y="-40" width="52" height="40" rx="17" fill="url(#gBrown)"/>
+  <rect x="16" y="-40" width="52" height="40" rx="17" fill="url(#gBrown)"/>
+  <rect x="-56" y="-152" width="42" height="120" rx="16" fill="url(#gJeans)"/>
+  <rect x="14" y="-152" width="42" height="120" rx="16" fill="url(#gJeans)"/>
+  <!-- 팔 -->
+  <g transform="rotate(7 -95 -300)"><rect x="-116" y="-304" width="42" height="140" rx="21" fill="url(#gYellow)"/><circle cx="-95" cy="-160" r="23" fill="url(#gSkin)"/></g>
+  <g transform="rotate(-7 95 -300)"><rect x="74" y="-304" width="42" height="140" rx="21" fill="url(#gYellow)"/><circle cx="95" cy="-160" r="23" fill="url(#gSkin)"/></g>
+  <!-- 몸통 -->
+  <rect x="-80" y="-314" width="160" height="176" rx="50" fill="url(#gYellow)"/>
+  <path d="M-80 -284 q0 -28 28 -28 h30 v168 h-30 q-28 0 -28 -28Z" fill="url(#gVest)"/>
+  <path d="M80 -284 q0 -28 -28 -28 h-30 v168 h30 q28 0 28 -28Z" fill="url(#gVest)"/>
+  <g fill="#3b2a20"><ellipse cx="-56" cy="-200" rx="14" ry="18"/><ellipse cx="-44" cy="-160" rx="11" ry="9"/><ellipse cx="52" cy="-270" rx="13" ry="10"/><ellipse cx="50" cy="-220" rx="13" ry="20"/><ellipse cx="40" cy="-170" rx="10" ry="12"/></g>
+  <rect x="-80" y="-162" width="160" height="20" rx="8" fill="#6b3f1d"/>
+  <rect x="-17" y="-168" width="34" height="32" rx="8" fill="#f6d34a" stroke="#b8901a" stroke-width="3"/>
+  <polygon points="-48,-262 -43,-250 -30,-250 -40,-242 -36,-229 -48,-237 -60,-229 -56,-242 -66,-250 -53,-250" fill="#ffd93a" stroke="#b8901a" stroke-width="2"/>
+  <!-- 목 / 두건 -->
+  <ellipse cx="0" cy="-320" rx="36" ry="16" fill="url(#gSkin)"/>
+  <path d="M-58 -324 Q0 -340 58 -324 L0 -262Z" fill="#d83a2e"/>
+  <g fill="#fff" opacity=".8"><circle cx="-26" cy="-312" r="4"/><circle cx="18" cy="-304" r="4"/><circle cx="-4" cy="-286" r="4"/></g>
+  <!-- 머리 -->
+  <ellipse cx="-70" cy="-372" rx="14" ry="21" fill="url(#gSkin)"/><ellipse cx="70" cy="-372" rx="14" ry="21" fill="url(#gSkin)"/>
+  <circle cx="0" cy="-372" r="70" fill="url(#gSkin)"/>
+  <path d="M-68 -392 q-6 28 4 46 l10 -2 l-2 -40Z M68 -392 q6 28 -4 46 l-10 -2 l2 -40Z" fill="#5a3416"/>
+  <ellipse cx="-44" cy="-338" rx="14" ry="9" fill="#ff8f7a" opacity=".35"/><ellipse cx="44" cy="-338" rx="14" ry="9" fill="#ff8f7a" opacity=".35"/>
+  <ellipse cx="-26" cy="-376" rx="17" ry="21" fill="#fff"/><ellipse cx="26" cy="-376" rx="17" ry="21" fill="#fff"/>
+  <circle cx="-23" cy="-374" r="10" fill="#4b2c17"/><circle cx="29" cy="-374" r="10" fill="#4b2c17"/>
+  <circle cx="-23" cy="-374" r="5" fill="#111"/><circle cx="29" cy="-374" r="5" fill="#111"/>
+  <circle cx="-26" cy="-379" r="3" fill="#fff"/><circle cx="26" cy="-379" r="3" fill="#fff"/>
+  <path d="M-44 -402 Q-26 -412 -8 -404 M8 -404 Q26 -412 44 -402" stroke="#4b2c17" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <ellipse cx="0" cy="-356" rx="10" ry="8" fill="#e08c5a"/>
+  <path d="M-32 -336 Q0 -304 32 -336 Z" fill="#8a2a2a" stroke="#5a1818" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M-24 -334 h48 q-4 8 -24 8 q-20 0 -24 -8Z" fill="#fff"/>
+  <!-- 모자 -->
+  <ellipse cx="0" cy="-426" rx="102" ry="24" fill="url(#gHat)"/>
+  <path d="M-60 -428 C-62 -500 -26 -508 0 -494 C26 -508 62 -500 60 -428Z" fill="url(#gHat)"/>
+  <path d="M-60 -428 h120 v-20 h-120Z" fill="#3e230d"/>
+  <ellipse cx="-30" cy="-476" rx="14" ry="26" fill="#fff" opacity=".18" transform="rotate(18 -30 -476)"/>
+  <!-- 풀 스트링 (리셋) -->
+  <line id="cord" x1="0" y1="-300" x2="0" y2="-214" stroke="#f6f0dc" stroke-width="5" stroke-linecap="round"/>
+  <g id="ringGroup">
+    <g id="btnReset" class="btn" role="button" tabindex="0" aria-label="리셋 (우디 줄 당기기)">
+      <g class="cap">
+        <circle id="ringHit" cx="0" cy="-190" r="34" fill="transparent"/>
+        <circle cx="0" cy="-190" r="22" fill="none" stroke="#b81d14" stroke-width="10"/>
+        <circle cx="0" cy="-190" r="22" fill="none" stroke="#ff6a5c" stroke-width="3" stroke-dasharray="40 100" transform="rotate(-140 0 -190)"/>
+        <text x="40" y="-184" font-size="20" font-weight="800" fill="#fff" stroke="#6b3f1d" stroke-width="5" paint-order="stroke">리셋</text>
+      </g>
+      <circle class="ring-focus" cx="0" cy="-190" r="34"/>
+    </g>
+  </g>
+</g>
+
+<!-- ================= 버즈 ================= -->
+<g id="buzz" transform="translate(1030 700) scale(.9)" filter="url(#shadow)">
+  <ellipse cx="0" cy="4" rx="115" ry="14" fill="#000" opacity=".25"/>
+  <rect x="-62" y="-46" width="52" height="46" rx="17" fill="url(#gWhite)"/>
+  <rect x="10" y="-46" width="52" height="46" rx="17" fill="url(#gWhite)"/>
+  <rect x="-60" y="-30" width="48" height="9" fill="url(#gGreen)"/><rect x="12" y="-30" width="48" height="9" fill="url(#gGreen)"/>
+  <rect x="-56" y="-172" width="44" height="136" rx="16" fill="url(#gWhite)"/>
+  <rect x="12" y="-172" width="44" height="136" rx="16" fill="url(#gWhite)"/>
+  <rect x="-56" y="-172" width="11" height="136" rx="5" fill="url(#gGreen)"/><rect x="45" y="-172" width="11" height="136" rx="5" fill="url(#gGreen)"/>
+  <!-- 팔 -->
+  <g transform="rotate(8 -102 -320)">
+    <rect x="-124" y="-324" width="44" height="146" rx="22" fill="url(#gWhite)"/>
+    <rect x="-126" y="-224" width="48" height="26" rx="10" fill="url(#gPurple)"/>
+    <circle cx="-102" cy="-172" r="22" fill="url(#gWhite)"/>
+    <ellipse cx="-102" cy="-320" rx="36" ry="30" fill="url(#gGreen)"/>
+  </g>
+  <g transform="rotate(-8 102 -320)">
+    <rect x="80" y="-324" width="44" height="146" rx="22" fill="url(#gWhite)"/>
+    <rect x="78" y="-224" width="48" height="26" rx="10" fill="url(#gPurple)"/>
+    <circle cx="102" cy="-172" r="22" fill="url(#gWhite)"/>
+    <ellipse cx="102" cy="-320" rx="36" ry="30" fill="url(#gGreen)"/>
+  </g>
+  <!-- 몸통 -->
+  <rect x="-86" y="-344" width="172" height="196" rx="52" fill="url(#gWhite)"/>
+  <rect x="-86" y="-322" width="24" height="150" rx="11" fill="url(#gGreen)"/><rect x="62" y="-322" width="24" height="150" rx="11" fill="url(#gGreen)"/>
+  <path d="M-30 -150 h60 l-6 -14 h-48Z" fill="url(#gPurple)"/>
+  <!-- 가슴 패널 (버튼) -->
+  <rect x="-70" y="-312" width="140" height="94" rx="14" fill="#23232b"/>
+  <rect x="-70" y="-312" width="140" height="94" rx="14" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="2"/>
+  <g class="btn" id="btnStart" role="button" tabindex="0" aria-label="시작 (초록 버튼)">
+    <circle class="ring-focus" cx="-42" cy="-272" r="24"/>
+    <g class="cap"><circle cx="-42" cy="-268" r="21" fill="#0b5a12"/><circle cx="-42" cy="-272" r="19" fill="url(#gBtnG)"/><ellipse cx="-48" cy="-279" rx="7" ry="4" fill="#fff" opacity=".6"/></g>
+  </g>
+  <g class="btn" id="btnStop" role="button" tabindex="0" aria-label="정지 (빨간 버튼)">
+    <circle class="ring-focus" cx="0" cy="-272" r="24"/>
+    <g class="cap"><circle cx="0" cy="-268" r="21" fill="#74100c"/><circle cx="0" cy="-272" r="19" fill="url(#gBtnR)"/><ellipse cx="-6" cy="-279" rx="7" ry="4" fill="#fff" opacity=".6"/></g>
+  </g>
+  <g class="btn" id="btnLap" role="button" tabindex="0" aria-label="랩 (파란 버튼)">
+    <circle class="ring-focus" cx="42" cy="-272" r="24"/>
+    <g class="cap"><circle cx="42" cy="-268" r="21" fill="#0f3a80"/><circle cx="42" cy="-272" r="19" fill="url(#gBtnB)"/><ellipse cx="36" cy="-279" rx="7" ry="4" fill="#fff" opacity=".6"/></g>
+  </g>
+  <g font-size="16" font-weight="800" fill="#fff" text-anchor="middle" opacity=".92">
+    <text x="-42" y="-228">시작</text><text x="0" y="-228">정지</text><text x="42" y="-228">랩</text>
+  </g>
+  <!-- 목 / 헬멧 -->
+  <ellipse cx="0" cy="-350" rx="86" ry="24" fill="url(#gPurple)"/>
+  <ellipse cx="0" cy="-356" rx="76" ry="16" fill="#8a5bd0" opacity=".6"/>
+  <circle cx="0" cy="-414" r="53" fill="url(#gSkin)"/>
+  <ellipse cx="-40" cy="-396" rx="12" ry="8" fill="#ff8f7a" opacity=".3"/><ellipse cx="40" cy="-396" rx="12" ry="8" fill="#ff8f7a" opacity=".3"/>
+  <ellipse cx="-19" cy="-420" rx="10" ry="12" fill="#fff"/><ellipse cx="19" cy="-420" rx="10" ry="12" fill="#fff"/>
+  <circle cx="-17" cy="-419" r="6" fill="#222"/><circle cx="21" cy="-419" r="6" fill="#222"/>
+  <circle cx="-19" cy="-422" r="2" fill="#fff"/><circle cx="19" cy="-422" r="2" fill="#fff"/>
+  <path d="M-34 -438 L-8 -432 M34 -438 L8 -432" stroke="#2a1a10" stroke-width="6" stroke-linecap="round"/>
+  <path d="M-4 -408 q4 6 8 0" stroke="#c97a4a" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M-22 -392 Q0 -374 22 -392" stroke="#8a2d2d" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <circle cx="0" cy="-414" r="78" fill="url(#gHelmet)" stroke="#fff" stroke-opacity=".75" stroke-width="4"/>
+  <path d="M-60 -446 A66 66 0 0 1 -18 -478" stroke="#fff" stroke-width="7" stroke-linecap="round" fill="none" opacity=".8"/>
+  <path d="M-84 -350 Q0 -318 84 -350" stroke="url(#gPurple)" stroke-width="12" fill="none" stroke-linecap="round"/>
+</g>
+
+<!-- ================= 앤디의 메모 (랩 기록) ================= -->
+<g id="paper" transform="rotate(-3 165 120)" filter="url(#softShadow)">
+  <rect x="45" y="22" width="240" height="196" rx="4" fill="#fffdf1"/>
+  <g stroke="#a8c8f0" stroke-width="1.5" opacity=".8">
+    <path d="M45 88H285M45 114H285M45 140H285M45 166H285M45 192H285"/>
+  </g>
+  <path d="M82 22V218" stroke="#f0a0a0" stroke-width="1.5" opacity=".7"/>
+  <rect x="85" y="10" width="46" height="20" fill="#ffe27a" opacity=".85" transform="rotate(-6 108 20)"/>
+  <rect x="200" y="10" width="46" height="20" fill="#ffe27a" opacity=".85" transform="rotate(5 223 20)"/>
+  <text class="crayon" x="96" y="70" font-size="36" font-weight="800" fill="#e0382f" transform="rotate(-2 96 70)">ANDY</text>
+  <text id="lapHint" class="crayon" x="94" y="112" font-size="17" fill="#8a96a8">랩 버튼을 눌러봐!</text>
+  <g class="crayon" font-size="19" font-weight="700" fill="#2a50a0">
+    <text id="lap0" x="92" y="108"></text>
+    <text id="lap1" x="92" y="134"></text>
+    <text id="lap2" x="92" y="160"></text>
+    <text id="lap3" x="92" y="186"></text>
+    <text id="lap4" x="92" y="212"></text>
+  </g>
+</g>
+
+<!-- 말풍선 -->
+<g id="bubble">
+  <polygon id="bTail" points="0,0 0,0 0,0" fill="#fff" stroke="#222" stroke-width="3" stroke-linejoin="round"/>
+  <rect id="bRect" x="0" y="0" width="100" height="46" rx="22" fill="#fff" stroke="#222" stroke-width="3"/>
+  <line id="bSeam" stroke="#fff" stroke-width="5"/>
+  <text id="bText" font-size="20" font-weight="800" fill="#222" text-anchor="middle"></text>
+</g>
+</svg>
+
+<script>
+  const $ = id => document.getElementById(id);
+
+  /* ---------- ABC 블록 ---------- */
+  function cube(tf, c, l, d, ch) {
+    return `<g transform="${tf}">
+      <polygon points="0,-56 14,-70 70,-70 56,-56" fill="${l}"/>
+      <polygon points="56,-56 70,-70 70,-14 56,0" fill="${d}"/>
+      <rect x="0" y="-56" width="56" height="56" rx="4" fill="${c}"/>
+      <text x="28" y="-16" font-size="36" font-weight="800" text-anchor="middle" fill="#fff" font-family="Arial Black, Arial">${ch}</text>
+    </g>`;
+  }
+  $('blocks').innerHTML =
+    cube('translate(525 700)', '#e0382f', '#f2736b', '#a8231b', 'A') +
+    cube('translate(595 700)', '#2a6fd6', '#6a9fe8', '#1c4a96', 'B') +
+    cube('translate(525 644) rotate(-6 28 0)', '#f0b81a', '#f8d764', '#b88608', 'C');
+
+  /* ---------- 스톱워치 ---------- */
+  let running = false, startTime = 0, elapsed = 0, lapStart = 0, laps = [], rafId = null;
+  const total = () => elapsed + (running ? performance.now() - startTime : 0);
+
+  function format(ms) {
+    const pad = n => String(n).padStart(2, '0');
+    const cs = Math.floor(ms / 10) % 100, s = Math.floor(ms / 1000) % 60;
+    const m = Math.floor(ms / 60000) % 60, h = Math.floor(ms / 3600000);
+    return (h ? h + ':' : '') + pad(m) + ':' + pad(s) + '.' + pad(cs);
+  }
+  function render() {
+    const t = format(total());
+    const el = $('disp');
+    el.textContent = t;
+    el.setAttribute('font-size', t.length > 8 ? 70 : 96);
+  }
+  function tick() { render(); rafId = requestAnimationFrame(tick); }
+  function setStatus() {
+    $('status').textContent = running ? 'RUNNING' : (elapsed > 0 ? 'PAUSED' : 'READY');
+    $('scene').classList.toggle('running', running);
+  }
+  function renderLaps() {
+    const rows = laps.slice(-5).reverse();
+    for (let i = 0; i < 5; i++) {
+      $('lap' + i).textContent = rows[i] !== undefined ? `랩 ${laps.length - i}   ${format(rows[i])}` : '';
+    }
+    $('lapHint').style.display = laps.length ? 'none' : '';
+  }
+
+  /* ---------- 말풍선 ---------- */
+  const anchors = { buzz: [1030, 262], woody: [170, 255], rex: [410, 420], hamm: [810, 568] };
+  let bubbleTimer = null;
+  function say(who, text) {
+    const [ax, ay] = anchors[who];
+    const t = $('bText');
+    t.textContent = text;
+    const w = Math.ceil(t.getComputedTextLength()) + 44, h = 46;
+    const bx = Math.max(12, Math.min(ax - w / 2, 1188 - w)), by = ay - 82;
+    $('bRect').setAttribute('x', bx); $('bRect').setAttribute('y', by);
+    $('bRect').setAttribute('width', w); $('bRect').setAttribute('height', h);
+    t.setAttribute('x', bx + w / 2); t.setAttribute('y', by + 30);
+    const tx = Math.max(bx + 28, Math.min(ax, bx + w - 28));
+    $('bTail').setAttribute('points', `${tx - 10},${by + h - 2} ${tx + 10},${by + h - 2} ${ax},${ay - 6}`);
+    const seam = $('bSeam');
+    seam.setAttribute('x1', tx - 8); seam.setAttribute('x2', tx + 8);
+    seam.setAttribute('y1', by + h); seam.setAttribute('y2', by + h);
+    $('bubble').classList.add('show');
+    clearTimeout(bubbleTimer);
+    bubbleTimer = setTimeout(() => $('bubble').classList.remove('show'), 1800);
+  }
+
+  /* ---------- 동작 ---------- */
+  function start() {
+    if (running) return;
+    startTime = performance.now(); running = true;
+    rafId = requestAnimationFrame(tick);
+    setStatus(); say('buzz', '무한한 공간 저 너머로!');
+  }
+  function stop() {
+    if (!running) return;
+    elapsed += performance.now() - startTime; running = false;
+    cancelAnimationFrame(rafId); render();
+    setStatus(); say('hamm', '잠깐 쉬자고~');
+  }
+  function lap() {
+    if (!running) return;
+    const t = total();
+    laps.push(t - lapStart); lapStart = t;
+    renderLaps(); say('rex', '으악! 벌써 랩이야?!');
+  }
+  function reset() {
+    $('ringGroup').style.transform = 'translateY(30px)';
+    $('cord').setAttribute('y2', -184);
+    setTimeout(() => { $('ringGroup').style.transform = ''; $('cord').setAttribute('y2', -214); }, 220);
+    if (running) { running = false; cancelAnimationFrame(rafId); }
+    elapsed = 0; lapStart = 0; laps = [];
+    render(); renderLaps(); setStatus(); say('woody', '카우보이 출동!');
+  }
+
+  $('btnStart').addEventListener('click', start);
+  $('btnStop').addEventListener('click', stop);
+  $('btnLap').addEventListener('click', lap);
+  $('btnReset').addEventListener('click', reset);
+  document.querySelectorAll('.btn').forEach(b => b.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); b.dispatchEvent(new MouseEvent('click')); }
+  }));
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space') { e.preventDefault(); running ? stop() : start(); }
+    else if (e.key === 'l' || e.key === 'L') lap();
+    else if (e.key === 'r' || e.key === 'R') reset();
+  });
+
+  render(); renderLaps(); setStatus();
+</script>
+</body>
+</html>
